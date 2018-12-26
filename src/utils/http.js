@@ -36,7 +36,34 @@ function checkCode (res) {
   if (!res.data) {
     alert(res.data.msg)
   }
+  if (res.data.code === 403) {
+    localStorage.removeItem('token')
+    let redirectUrl = funcUrlDel('code')
+    redirectUrl = encodeURIComponent(redirectUrl)
+    console.log(redirectUrl)
+    const appid = 'wx02432c565d387e80'
+    window.location.href = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${appid}&redirect_uri=${redirectUrl}&response_type=code&scope=snsapi_userinfo&state=#wechat_redirect`
+    return
+  }
   return res
+}
+
+function funcUrlDel (name) {
+  let loca = window.location
+  let baseUrl = loca.origin + loca.pathname + '?'
+  let query = loca.search.substr(1)
+  if (query.indexOf(name) > -1) {
+    let obj = {}
+    let arr = query.split('&')
+    for (let i = 0; i < arr.length; i++) {
+      arr[i] = arr[i].split('=')
+      obj[arr[i][0]] = arr[i][1]
+    };
+    delete obj[name]
+    let url = baseUrl + JSON.stringify(obj).replace(/[\"\{\}]/g, '').replace(/\:/g, '=').replace(/\,/g, '&')
+    return url
+  }
+  return baseUrl
 }
 
 export default {

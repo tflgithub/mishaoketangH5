@@ -1,5 +1,6 @@
 <template>
   <div class='page' id="page">
+    <vue-scroll @handle-scroll="handleScroll">
     <div class="share-tip" v-if="showShare" @click="share">
       <img src="../assets/images/share_tip.png"/>
     </div>
@@ -20,12 +21,12 @@
     <div class="name">{{courseInfo.title}}</div>
     <div class="learn">
       <img src="../assets/images/ic_xuexi.png">
-      <span>已经有{{courseInfo.learnNum}}人学习</span>
+      <span>{{courseInfo.learnNum}}人学习</span>
     </div>
     <p class="wxgz" v-html="courseInfo.wxgzInfo"></p>
-    <div :class="top>230?'topnav':''">
+    <div :class="toTop?'topnav':''">
     <mt-navbar v-model="selected" class="navbar">
-      <mt-tab-item id="1"><span class="navbar-text">课程介绍</span></mt-tab-item>
+      <mt-tab-item id="1"><span class="navbar-text">课程信息</span></mt-tab-item>
       <mt-tab-item id="2"><span class="navbar-text">线下课程</span></mt-tab-item>
       <mt-tab-item id="3" v-if="hadFee"><span class="navbar-text">课件</span></mt-tab-item>
     </mt-navbar>
@@ -43,7 +44,7 @@
         <div class="course_desc">
           <div class="title">
             <img src="../assets/images/ic_kecheng.png">
-            <span>课程简介</span>
+            <span>课程介绍</span>
           </div>
         </div>
         <p class="summary" v-html="summaryInfo"></p>
@@ -73,6 +74,7 @@
         <span>我要学习</span>
       </div>
     </footer>
+    </vue-scroll>
   </div>
 </template>
 
@@ -91,6 +93,7 @@ let _hmt = _hmt || [];
 /** 百度统计***/
 export default {
   name: 'IosPay',
+  inject: ['reload'],
   data: function () {
     return {
       showPoster: true,
@@ -103,13 +106,12 @@ export default {
       buttonText: '播放宣传片',
       canPay: true,
       selected: '1',
-      top: '',
-      showShare: false
+      toTop: false,
+      showShare: false,
+      scrollTop: 470
     }
   },
   mounted: function () {
-    // 全屏滚动事件
-    document.getElementById('page').addEventListener('scroll', this.handleScroll)
     // 微信分享授权
     wxApi.wxRegister(this.wxRegCallback)
     // 获取服务课程数据
@@ -140,8 +142,12 @@ export default {
       // 将配置注入通用方法
       wxApi.ShareAppMessage(option)
     },
-    handleScroll () {
-      this.top = document.getElementById('page').scrollTop
+    handleScroll (vertical) {
+      if (vertical.scrollTop > this.scrollTop) {
+        this.toTop = true
+      } else if (vertical.scrollTop == 0) {
+        this.toTop = false
+      }
     },
     fetchData: async function () {
       let params = {
@@ -180,7 +186,10 @@ export default {
       let params = {'courseId': this.courseInfo.courseId}
       const res = await http.post(api.payUrl, params)
       if (res.data.code === 0) {
-        this.canPay = true
+        let clock = window.setInterval(() => {
+          this.canPay = true
+          window.clearInterval(clock)
+        }, 30000)
         if (typeof WeixinJSBridge === 'undefined') {
           if (document.addEventListener) {
             document.addEventListener('WeixinJSBridgeReady', this.onBridgeReady, false)
@@ -192,7 +201,7 @@ export default {
           this.onBridgeReady(res.data)
         }
       } else {
-        alert('下单失败')
+        alert(res.data.msg)
         this.canPay = true
       }
     },
@@ -208,7 +217,8 @@ export default {
         },
         function (res) {
           if (res.err_msg == 'get_brand_wcpay_request:ok') {
-            alert('支付成功')
+            //window.location.reload()
+            this.reload()
           } else {
             alert('支付失败')
           }
@@ -223,13 +233,14 @@ export default {
   @import '../assets/scss/common.scss';
 
    .page{
-     height: 100%;
      position:absolute;
      top: 0;
      left:0;
      right: 0;
      bottom: 0;
      overflow: auto;
+     width: 100vw;
+     height:100vh;
      background-color: #FFFFFF;
    }
 

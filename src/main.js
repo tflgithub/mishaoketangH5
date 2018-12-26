@@ -3,49 +3,71 @@
 import Vue from 'vue'
 import App from './App'
 import 'amfe-flexible'
+import http from './utils/http'
 import router from './router'
 import MintUI from 'mint-ui'
 import 'mint-ui/lib/style.css'
 import './assets/scss/my-mint.scss'
-import wechatPlugin from 'vue-wechat-plugin'
-import axios from 'axios'
+import vuescroll from 'vuescroll'
+import 'vuescroll/dist/vuescroll.css'
+Vue.use(vuescroll, {
+  ops: {
+    bar: {
+      background: '#000',
+      opacity: 0.6,
+      size: '3px'
+    },
+    scrollPanel: {
+      initialScrollY: false,
+      initialScrollX: false,
+      scrollingX: false,
+      scrollingY: true,
+      speed: 300,
+      easing: undefined,
+      verticalNativeBarPos: 'right'
+    }
+  }
+})
+
 Vue.use(MintUI)
 Vue.config.productionTip = false
-// 微信授权插件初始化
-Vue.use(wechatPlugin, {
-  router, // 路由实例对象
-  appid: 'wx02432c565d387e80', // 您的微信appid
-  responseType: 'code', // 返回类型，请填写code
-  scope: 'snsapi_userinfo', // 应用授权作用域，snsapi_base （不弹出授权页面，直接跳转，只能获取用户openid），snsapi_userinfo （弹出授权页面，可通过openid拿到昵称、性别、所在地。并且，即使在未关注的情况下，只要用户授权，也能获取其信息）
-  redirectUri: location.href.split('#')[0], // 微信回调地址
-  getCodeCallback (next, code) {
-    let params = {'code': code, 'type': '2'}
-    axios({
-      method: 'post',
-      baseURL: this.HOST,
-      url: '/apikt/wxa/v1/login/mpCode',
-      data: params,
-      timeout: 5000,
-      withCredentials: true,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Content-Type': 'application/json; charset=UTF-8'
-      }}).then((res) => {
+
+router.beforeEach(async (to, from, next) => {
+  if (to.matched.some(recode => recode.meta.wechatAuth)) {
+    if (localStorage.getItem('token')) {
+      next()
+      return
+    }
+    let code = getQueryString('code')
+    if (code != null) {
+      let params = {'code': code, 'type': '2'}
+      let res = await http.post('/apikt/wxa/v1/login/mpCode', params)
       if (res.data.data.token) {
         localStorage.setItem('token', res.data.data.token)
-        next('', code)
+        next()
       } else {
         next('/error')
       }
-    }).catch(() => {
-      next('/error')
-    })
-  }
+      return
+    }
+    let redirectUrl = window.location.href
+    redirectUrl = encodeURIComponent(redirectUrl)
+    console.log(redirectUrl)
+    const appid = 'wx02432c565d387e80'
+    window.location.href = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${appid}&redirect_uri=${redirectUrl}&response_type=code&scope=snsapi_userinfo&state=123#wechat_redirect`
+  } else { next() }
 })
+
+function getQueryString (name) {
+  let reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)')
+  let r = window.location.search.substr(1).match(reg)// search,查询？后面的参数，并匹配正则
+  if (r != null) return unescape(r[2]); return null
+}
+
 /* eslint-disable no-new */
 new Vue({
   el: '#app',
   router,
-  components: { App },
+  components: {App},
   template: '<App/>'
 })
