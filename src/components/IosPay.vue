@@ -1,6 +1,5 @@
 <template>
   <div class='page' id="page">
-    <vue-scroll @handle-scroll="handleScroll">
     <div class="share-tip" v-if="showShare" @click="share">
       <img src="../assets/images/share_tip.png"/>
     </div>
@@ -23,39 +22,41 @@
       <img src="../assets/images/ic_xuexi.png">
       <span>{{courseInfo.learnNum}}人学习</span>
     </div>
-    <p class="wxgz" v-html="courseInfo.wxgzInfo"></p>
-    <div :class="toTop?'topnav':''">
-    <mt-navbar v-model="selected" class="navbar">
-      <mt-tab-item id="1"><span class="navbar-text">课程信息</span></mt-tab-item>
-      <mt-tab-item id="2"><span class="navbar-text">线下课程</span></mt-tab-item>
-      <mt-tab-item id="3" v-if="hadFee"><span class="navbar-text">课件</span></mt-tab-item>
-    </mt-navbar>
+    <p @click="wxgz" class="wxgz" v-html="courseInfo.wxgzInfo"/>
+    <div id="navbar" :class="hadFee==true?'navbar':'navbar_half'">
+      <ul :class="navBarFixed == true ? 'isFixed' :''">
+        <li v-for="(tab,index) in tabs" :class="{tab_tit_cur:selected==index}" @click="toggleTab(index)" v-html="tab.title"></li>
+      </ul>
     </div>
-    <mt-tab-container v-model="selected">
-      <mt-tab-container-item id="1">
-        <div class="teacher">
-          <img :src='teacherInfo.avatarUrl'/>
-          <dev class="zhiwei">讲师</dev>
-          <div class="info">
-            <span class="nickName">{{teacherInfo.name}}</span>
-            <span class="title">{{teacherInfo.title}}</span>
-          </div>
+
+    <div style="background-color: #FFFFFF">
+      <div class="teacher">
+        <img :src='teacherInfo.avatarUrl'/>
+        <div class="zhiwei">讲师</div>
+        <div class="info">
+          <span class="nickName">{{teacherInfo.name}}</span>
+          <span class="title">{{teacherInfo.title}}</span>
         </div>
-        <div class="course_desc">
-          <div class="title">
-            <img src="../assets/images/ic_kecheng.png">
-            <span>课程介绍</span>
-          </div>
-        </div>
-        <p class="summary" v-html="summaryInfo"></p>
-      </mt-tab-container-item>
-      <mt-tab-container-item id="2">
-        <p class="summary" v-html="courseInfo.aboutInfo"></p>
-      </mt-tab-container-item>
-      <mt-tab-container-item id="3">
-        <p class="summary" v-html="pptInfo.content"></p>
-      </mt-tab-container-item>
-    </mt-tab-container>
+      </div>
+      <div class="tab_title" id="courseDesc">
+        <img src="../assets/images/ic_kecheng.png">
+        <span>课程介绍</span>
+      </div>
+      <p class="summary" v-html="summaryInfo"></p>
+    </div>
+      <div class="tab_title" id="offLineCourse">
+        <img src="../assets/images/ic_kecheng.png">
+        <span>线下课程</span>
+      </div>
+      <p class="summary" v-html="courseInfo.aboutInfo"></p>
+
+    <div  v-if="hadFee" id="ppt">
+      <div class="tab_title" >
+        <img src="../assets/images/ic_kecheng.png">
+        <span>课件</span>
+      </div>
+      <p class="summary" v-html="pptInfo.content"></p>
+    </div>
 
     <footer>
       <div class="share" @click="share">
@@ -74,7 +75,6 @@
         <span>我要学习</span>
       </div>
     </footer>
-    </vue-scroll>
   </div>
 </template>
 
@@ -82,8 +82,8 @@
 import http from '../utils/http'
 import api from '../utils/api'
 import wxApi from '../utils/wxapi'
+import common from '../utils/common'
 /** 百度统计***/
-let _hmt = _hmt || [];
 (function () {
   let hm = document.createElement('script')
   hm.src = 'https://hm.baidu.com/hm.js?fe9d2f6b679ccab2309da8a72a5a21fe'
@@ -96,6 +96,8 @@ export default {
   inject: ['reload'],
   data: function () {
     return {
+      tabs: [{id: 0, title: '课程介绍'}, {id: 1, title: '线下课程'}, {id: 2, title: '课件'}],
+      selected: 0,
       showPoster: true,
       courseInfo: {},
       teacherInfo: {},
@@ -105,20 +107,40 @@ export default {
       videoUrl: '',
       buttonText: '播放宣传片',
       canPay: true,
-      selected: '1',
-      toTop: false,
-      showShare: false,
-      scrollTop: 470
+      navBarFixed: false,
+      showShare: false
     }
   },
   mounted: function () {
+    document.getElementById('page').addEventListener('scroll', this.handleScroll)
     // 微信分享授权
     wxApi.wxRegister(this.wxRegCallback)
     // 获取服务课程数据
     this.fetchData()
   },
   methods: {
+    wxgz () {
+      if (common.isWeChatOpen()) {
+        // 在微信中打开
+        window.open('https://mp.weixin.qq.com/mp/profile_ext?action=home&__biz=MzU2ODc2MDAxNQ==#wechat_redirect')
+      }
+    },
+    toggleTab (index) {
+      this.selected = index
+      if (this.selected == '0') {
+        document.getElementById('courseDesc').scrollIntoView()
+      } else if (this.selected == '1') {
+        document.getElementById('offLineCourse').scrollIntoView()
+      } else if (this.selected == '2') {
+        document.getElementById('ppt').scrollIntoView()
+      }
+      document.querySelector('#page').scrollTop -= 45
+    },
     share () {
+      if (!common.isWeChatOpen()) {
+        alert('请使用微信打开')
+        return
+      }
       let isShow = this.showShare
       this.showShare = !isShow
     },
@@ -142,11 +164,30 @@ export default {
       // 将配置注入通用方法
       wxApi.ShareAppMessage(option)
     },
-    handleScroll (vertical) {
-      if (vertical.scrollTop > this.scrollTop) {
-        this.toTop = true
-      } else if (vertical.scrollTop == 0) {
-        this.toTop = false
+    handleScroll () {
+      let scrollTop = document.querySelector('#page').scrollTop
+      console.log(scrollTop)
+      let offsetNavBar = document.querySelector('#navbar').offsetTop
+      // 课程介绍
+      let courseDesc = document.querySelector('#courseDesc').offsetTop
+      // // 线下课程
+      let offsetOffLineCourse = document.querySelector('#offLineCourse').offsetTop
+      // // 课件
+      let ppt = 0
+      if (this.hadFee) {
+        ppt = document.querySelector('#ppt').offsetTop
+      }
+      if (scrollTop > offsetNavBar) {
+        this.navBarFixed = true
+      } else {
+        this.navBarFixed = false
+      }
+      if (scrollTop <= courseDesc && scrollTop > 0) {
+        this.selected = '0'
+      } else if (scrollTop > courseDesc && scrollTop <= offsetOffLineCourse) {
+        this.selected = '1'
+      } else if (ppt !== 0 && scrollTop <= ppt && scrollTop > offsetOffLineCourse) {
+        this.selected = '2'
       }
     },
     fetchData: async function () {
@@ -166,6 +207,7 @@ export default {
           this.canPay = false
           this.videoUrl = res.data.data.courseInfo.videoUrl
         } else {
+          this.tabs.pop()
           this.videoUrl = res.data.data.courseInfo.adUrl
         }
       }
@@ -182,6 +224,10 @@ export default {
       }, 0)
     },
     buy: async function () {
+      if (!common.isWeChatOpen()) {
+        alert('请使用微信打开')
+        return
+      }
       this.canPay = false
       let params = {'courseId': this.courseInfo.courseId}
       const res = await http.post(api.payUrl, params)
@@ -217,7 +263,7 @@ export default {
         },
         function (res) {
           if (res.err_msg == 'get_brand_wcpay_request:ok') {
-            //window.location.reload()
+            alert('支付成功')
             this.reload()
           } else {
             alert('支付失败')
@@ -232,52 +278,102 @@ export default {
 <style lang="scss" scoped>
   @import '../assets/scss/common.scss';
 
-   .page{
-     position:absolute;
-     top: 0;
-     left:0;
-     right: 0;
-     bottom: 0;
-     overflow: auto;
-     width: 100vw;
-     height:100vh;
-     background-color: #FFFFFF;
-   }
+  .page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    background-color: #EFEFEF;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling : touch;
+  }
 
-   .share-tip{
-     width: 100%;
-     height: 100%;
-     position: fixed;
-     top:0;
-     background:rgba(0,0,0,0.6);
-     bottom: 0;
-     z-index: 9999;
-   }
+  .share-tip {
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    background: rgba(0, 0, 0, 0.6);
+    bottom: 0;
+    z-index: 9999;
+  }
 
-  .share-tip img{
+  .share-tip img {
     position: absolute;
     right: 0;
     width: px2rem(560px);
     height: px2rem(338px);
-    margin:px2rem(20px);
+    margin: px2rem(20px);
   }
 
-  .topnav {
-    zoom: 1;
-    position: fixed;
-    top: 0;
-    width: 100%;
-    background-color: white;
-    z-index: 999;
+  .navbar {
+    ul {
+      overflow: hidden;
+      border-bottom: px2rem(1px) solid #e7e7e7;
+      background-color: #FFFFFF;
+      justify-items: center;
+      padding-left: px2rem(42px);
+      padding-right: px2rem(42px);
+      li {
+        float: left;
+        font-size: px2rem(35px);
+        padding-top: px2rem(20px);
+        padding-bottom: px2rem(20px);
+        text-align: center;
+        width: 33.33%;
+      }
+    }
+    .tab_tit_cur{
+      border-bottom: px2rem(2px) solid #785B01;
+      color: #785B01;
+    }
+    .isFixed {
+      position: fixed;
+      top: 0;
+      z-index: 999;
+      width: 100%;
+      padding-left: px2rem(42px);
+      padding-right: px2rem(42px);
+      box-sizing:border-box;
+      -moz-box-sizing:border-box; /* Firefox */
+      -webkit-box-sizing:border-box; /* Safari */
+    }
   }
 
-  .navbar{
-    padding-left: px2rem(42px);
-    padding-right: px2rem(42px);
-  }
-
-  .navbar-text{
-    font-size: px2rem(32px);
+  .navbar_half {
+    ul {
+      overflow: hidden;
+      border-bottom: px2rem(1px) solid #e7e7e7;
+      background-color: #FFFFFF;
+      justify-items: center;
+      padding-left: px2rem(42px);
+      padding-right: px2rem(42px);
+      li {
+        float: left;
+        font-size: px2rem(35px);
+        padding-top: px2rem(20px);
+        padding-bottom: px2rem(20px);
+        text-align: center;
+        width: 50%;
+      }
+    }
+    .tab_tit_cur{
+      border-bottom: px2rem(2px) solid #785B01;
+      color: #785B01;
+    }
+    .isFixed {
+      position: fixed;
+      top: 0;
+      z-index: 999;
+      width: 100%;
+      padding-left: px2rem(42px);
+      padding-right: px2rem(42px);
+      box-sizing:border-box;
+      -moz-box-sizing:border-box; /* Firefox */
+      -webkit-box-sizing:border-box; /* Safari */
+    }
   }
 
   .poster {
@@ -314,7 +410,7 @@ export default {
   }
 
   .learn {
-    /*background-color: #ffffff;*/
+    background-color: #ffffff;
     /*display: -webkit-flex;*/
     /*display: flex;*/
     /*-webkit-box-pack: center;*/
@@ -336,17 +432,28 @@ export default {
   }
 
   .teacher {
-    margin-top: px2rem(40px);
+    position: relative;
     display: inline-flex;
     align-items: center;
     width: px2rem(750px);
-    margin-right:px2rem(42px);
+    margin-right: px2rem(42px);
+    margin-top: px2rem(20px);
     height: px2rem(166px);
     background-color: #FFF8E2;
+    .zhiwei {
+      position: absolute;
+      top: px2rem(105px);
+      left: px2rem(67px);
+      line-height: px2rem(30px);
+      background: rgba(255, 192, 7, 1);
+      border-radius: px2rem(4px);
+      padding: px2rem(5px);
+      font-size: px2rem(24px);
+    }
   }
 
   .teacher img {
-    height:px2rem(108px);
+    height: px2rem(108px);
     width: px2rem(108px);
     margin-left: px2rem(41px);
     border-radius: 50%;
@@ -371,53 +478,38 @@ export default {
     color: #1D1D1D;
   }
 
-  .teacher .zhiwei{
-    position: absolute;
-    top:px2rem(145px);
-    left:px2rem(67px);
-    line-height: px2rem(30px);
-    background:rgba(255,192,7,1);
-    border-radius:px2rem(4px);
-    padding:px2rem(5px);
-    font-size: px2rem(24px);
+  .wxgz {
+    padding: px2rem(42px);
+    background-color: #ffffff;
   }
 
-  .wxgz{
-    margin: px2rem(42px);
-  }
-
-  .course_desc {
-    background: #fff;
-    margin-top: px2rem(40px);
-  }
-
-  .course_desc .title {
+  .tab_title {
+    height: px2rem(100px);
+    line-height: px2rem(100px);
+    background-color: #ffffff;
+    margin-top: px2rem(20px);
     display: -webkit-flex;
     display: flex;
-    /*-webkit-box-pack: center;*/
-    /*-moz-justify-content: center;*/
-    /*-webkit-justify-content: center;*/
-    /*justify-content: center;*/
-    /*-webkit-box-align: center;*/
     -moz-align-items: center;
     -webkit-align-items: center;
     align-items: center;
     padding-left: px2rem(41px);
-    padding-top: px2rem(20px);
-  }
 
-  .course_desc .title img {
-    width: px2rem(30px);
-    height: px2rem(30px);
-  }
+      img {
+        width: px2rem(30px);
+        height: px2rem(30px);
+      }
 
-  .course_desc .title span {
-    font-size: px2rem(29px);
-    margin-left: px2rem(10px);
-  }
+      span {
+        font-size: px2rem(29px);
+        margin-left: px2rem(10px);
+      }
+    }
 
   .summary {
-    margin:px2rem(42px);
+    padding-left: px2rem(42px);
+    padding-right: px2rem(42px);
+    background-color: #ffffff;
   }
 
   footer {

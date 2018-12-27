@@ -13,7 +13,7 @@ export default new Router({
       name: 'IosPay',
       component: IosPay,
       meta: {
-        wechatAuth: false // 如果此路由需要微信授权请设置为true,默认为false
+        wechatAuth: true // 如果此路由需要微信授权请设置为true,默认为false
       }
     }, {
       path: '/error',
