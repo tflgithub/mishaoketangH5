@@ -1,18 +1,8 @@
 import wx from 'weixin-js-sdk'
-import axios from 'axios'
+import http from './http'
 function wxRegister (callback) {
   let reqUrl = location.href.split('#')[0]
-  axios({
-    method: 'post',
-    baseURL: this.HOST,
-    url: '/apikt/wxa/v1/tools/jsSDKWX',
-    data: {url: reqUrl},
-    timeout: 5000,
-    withCredentials: true,
-    headers: {
-      'X-Requested-With': 'XMLHttpRequest',
-      'Content-Type': 'application/json; charset=UTF-8'
-    }}).then((res) => {
+  http.post('/apikt/wxa/v1/tools/jsSDKWX',{url: reqUrl}).then((res) => {
     wx.config({
       debug: false, // 开启调试模式
       appId: res.data.data.appId, // 必填，公众号的唯一标识

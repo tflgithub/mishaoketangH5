@@ -12,7 +12,7 @@ module.exports = {
     assetsPublicPath: '/',
     proxyTable: {
       '/apikt/*': {
-        target: 'http://api.miskitchen.com',
+        target: 'https://h5.miskitchen.com',
         changeOrigin: true
       }
     },
